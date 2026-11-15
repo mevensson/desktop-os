@@ -47,7 +47,7 @@ podman push --quiet --tls-verify="$tls" "${auth[@]}" --digestfile "$temporary/di
     "$image_id" "docker://${repository}:${release_id}"
 digest=$(< "$temporary/digest")
 [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
-bash scripts/registry-image.sh "${repository}@${digest}" > "$temporary/candidate.json"
+bash scripts/wait-for-registry-image.sh "${repository}@${digest}" "$digest" > "$temporary/candidate.json"
 jq -e --arg id "$release_id" '.Labels["org.opencontainers.image.version"] == $id' \
     "$temporary/candidate.json" > /dev/null
 
@@ -77,8 +77,12 @@ decision=$(jq -ers -f scripts/promotion-decision.jq "$temporary/candidate.json" 
 if [[ "$decision" == promote ]]; then
     skopeo copy --quiet --src-tls-verify="$tls" --dest-tls-verify="$tls" "${auth[@]}" \
         --preserve-digests "docker://${repository}@${digest}" "docker://${repository}:production"
-    bash scripts/registry-image.sh "${repository}:production" | \
-        jq -e --arg digest "$digest" '.Digest == $digest' > /dev/null
+    if ! bash scripts/wait-for-registry-image.sh "${repository}:production" "$digest" \
+        > "$temporary/promoted.json"; then
+        printf '%s\n' 'The production tag copy succeeded, but read-back verification failed.' \
+            "Production may already point to ${digest}; inspect it before retrying." >&2
+        exit 1
+    fi
 fi
 jq -n --argjson release "$release" --arg repository "$repository" --arg digest "$digest" \
     --arg verified_at "$verified_at" --arg decision "$decision" \

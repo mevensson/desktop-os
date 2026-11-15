@@ -88,7 +88,12 @@ It verifies the actual local image's embedded metadata and labels, then:
    reference bootstraps the channel; invalid or incomparable metadata stops
    promotion instead of replacing it.
 5. Copies the verified immutable digest to `production` only if it is newer,
-   preserving the digest, then verifies the moving reference.
+   preserving the digest, then verifies the moving reference. Post-write reads
+   of both the uploaded digest and production tag tolerate temporary missing or
+   stale responses: up to 12 attempts with 10 seconds between attempts. A
+   persistent mismatch fails with the expected/observed digest in the log;
+   authentication and transport errors still fail immediately. Initial tag
+   probes and ordering decisions continue to fail closed.
 
 All production jobs share the `os-production` concurrency slot for the whole
 build/publication. That serializes both immutable-tag probes and promotion.
@@ -172,3 +177,37 @@ failed during DNF repository refresh because the build bridge could not reach
 the runner's DNS resolver. The CI wrapper now uses host networking for build
 steps. That failed run did not publish any image; both production jobs were
 correctly skipped for branch/PR events.
+
+## First production delivery and read-back failure — 2026-11-15
+
+The [first main-branch run](https://github.com/mevensson/desktop-os/actions/runs/43717108498)
+successfully built and verified the OS image, logged in to GHCR, uploaded
+`release-43717108498-1`, and advanced `production`. It then failed with exit
+code 4 before writing its publication receipt. The immediate post-promotion
+inspection pipeline could see an absent manifest during GHCR propagation:
+the inspector returned no JSON and the following `jq -e` exited 4. Both tags
+subsequently resolved to the intended digest.
+
+The read-back fix uses bounded missing/stale retries and explicit failure
+diagnostics instead of piping a potentially empty inspection into `jq`. The
+local publication regression test now injects one missing response and one
+stale response immediately after each real production-tag copy, and confirms
+successful recovery. It also verifies that permanently stale reads exhaust the
+retry budget and fail without accepting the wrong digest. The full local
+publication protocol and `just check` passed after this change.
+
+An independent full image download with `skopeo copy --src-no-creds
+--preserve-digests` succeeded from GHCR, and inspection of the downloaded OCI
+layout confirmed:
+
+| Field | Observed value |
+| --- | --- |
+| Release | `release-43717108498-1` |
+| Published manifest digest | `sha256:4b4a5d2d0e0dd6ada7ebfc3a45abad9afe39d12911a9f1bcf7f6231776768f39` |
+| Source revision | `3874cafee82c20562231269c12b2e09201df1fa2` |
+| Platform | `linux/amd64` |
+| Moving production reference | Resolved to the same published manifest digest |
+
+This establishes actual public GHCR delivery despite the failed final read-back
+check. The retry fix has been validated locally; a successful production run of
+the updated workflow still needs verification after the fix reaches `main`.

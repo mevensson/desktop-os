@@ -51,11 +51,11 @@ bash scripts/registry-image.sh "${repository}@${digest}" > "$temporary/candidate
 jq -e --arg id "$release_id" '.Labels["org.opencontainers.image.version"] == $id' \
     "$temporary/candidate.json" > /dev/null
 
-# Retrieve all layers with an explicitly empty credential store before promotion.
+# Retrieve all layers in explicit anonymous mode before promotion, without any
+# fallback to the user's Docker/Podman credential stores.
 # GHCR packages must be public; a private first upload stops here with a useful
 # registry error and can be made public in package settings before a new attempt.
-printf '{"auths":{}}\n' > "$temporary/anonymous.json"
-if ! skopeo copy --quiet --src-tls-verify="$tls" --src-authfile "$temporary/anonymous.json" \
+if ! skopeo copy --quiet --src-tls-verify="$tls" --src-no-creds \
     --preserve-digests "docker://${repository}@${digest}" "oci:${temporary}/pull:verified"; then
     printf '%s\n' 'Anonymous retrieval failed; confirm the GHCR package is Public and reachable.' \
         'The immutable upload may exist, but production has not been changed.' >&2

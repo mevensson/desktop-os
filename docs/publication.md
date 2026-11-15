@@ -30,7 +30,9 @@ The Ubuntu x86-64 runner installs Nix and uses the same locked toolchain and
 through sudo, using the flake's Podman executable. Git, Nix, source/metadata
 preparation, and registry credentials stay in the runner's user context. This
 avoids relaxing Ubuntu's host user-namespace security settings. Local rootless
-build commands remain unchanged. The runner frees unused preinstalled software
+build commands remain unchanged. CI builds use the disposable runner's host
+network for `RUN` steps so Ubuntu's stub DNS resolver remains reachable; content
+verification containers still run with `--network=none`. The runner frees unused preinstalled software
 before downloading large OS image layers.
 
 Successful image production, package/unit/metadata checks, and bootc lint are the
@@ -78,8 +80,9 @@ It verifies the actual local image's embedded metadata and labels, then:
    authentication, network, and other registry errors fail closed.
 2. Pushes the successfully produced image by its **local image ID**, recording
    the digest of the resulting registry manifest.
-3. Retrieves the uploaded image by digest into a temporary OCI layout with an
-   explicitly empty credential store. This downloads **all layers**, not just
+3. Retrieves the uploaded image by digest into a temporary OCI layout with
+   Skopeo's explicit `--src-no-creds` mode (no credential-store fallback).
+   This downloads **all layers**, not just
    registry metadata, and checks the preserved manifest digest.
 4. Reads the current production image's ordering metadata. A positively absent
    reference bootstraps the channel; invalid or incomparable metadata stops
@@ -124,9 +127,8 @@ To independently verify a published digest from a machine with no GHCR login:
 ```bash
 nix develop path:.
 temporary=$(mktemp -d)
-printf '{"auths":{}}\n' > "$temporary/auth.json"
 # Substitute the digest recorded in publication.json:
-skopeo copy --src-authfile "$temporary/auth.json" --preserve-digests \
+skopeo copy --src-no-creds --preserve-digests \
   docker://ghcr.io/mevensson/desktop-os@sha256:YOUR_DIGEST \
   "oci:$temporary/image:verified"
 skopeo inspect "oci:$temporary/image:verified"
@@ -163,3 +165,10 @@ local GitHub CLI login has repository/workflow scopes but no package scopes.
 Production GHCR publication and public retrieval require the main-branch
 workflow and public package setup above; they are not claimed as verified by
 these local tests. Installation/hardware validation remains in issue #3.
+
+The initial remote [push validation run](https://github.com/mevensson/desktop-os/actions/runs/43714490469)
+passed Nix setup, actionlint/ShellCheck, and rootful builder initialization, then
+failed during DNF repository refresh because the build bridge could not reach
+the runner's DNS resolver. The CI wrapper now uses host networking for build
+steps. That failed run did not publish any image; both production jobs were
+correctly skipped for branch/PR events.

@@ -3,9 +3,10 @@
 A shared AMD x86-64 Rawhide COSMIC OS image, planned in
 [issue #1](https://github.com/mevensson/desktop-os/issues/1).
 
-The repository currently provides the development/build toolchain. The OS image
-Containerfile and publication workflow will follow as part of
-[issue #2](https://github.com/mevensson/desktop-os/issues/2).
+The repository provides the development/build toolchain and a minimal OS image
+build. CI publication and Firefox Flatpak setup are subsequent steps in
+[issue #2](https://github.com/mevensson/desktop-os/issues/2). Local build evidence
+is recorded in [docs/image-build.md](docs/image-build.md).
 
 ## Development and build tools
 
@@ -19,6 +20,9 @@ just                  # List commands
 just check            # Flake evaluation, formatting, script/workflow linting
 just doctor           # Tool versions and Podman host information
 just inspect-base     # Inspect the selected Rawhide base without pulling its layers
+just resolve-base     # Resolve and validate its exact linux/amd64 manifest
+just build            # Build localhost/desktop-os:dev
+just verify           # Check the built image and run bootc lint
 ```
 
 The explicit `path:.` also works while new flake files are still untracked by
@@ -29,20 +33,22 @@ The same commands can run non-interactively on a build machine or GitHub runner:
 ```bash
 nix develop path:. --command just check
 nix develop path:. --command just doctor
-# Once the Containerfile is implemented:
 nix develop path:. --command just build
+nix develop path:. --command just verify
 ```
 
-`just build` builds `localhost/desktop-os:dev` for `linux/amd64` and refreshes
-referenced base tags. An alternative local image name can be passed as an
-argument. Until a Containerfile exists, it exits with an explanatory error.
+`just build` builds `localhost/desktop-os:dev` for `linux/amd64`. Each invocation
+resolves the current Rawhide base to its amd64 manifest digest before building.
+An alternative local image name and base reference can be passed as arguments;
+see [the image build documentation](docs/image-build.md).
 
 `just inspect-base` defaults to
 `quay.io/fedora-ostree-desktops/cosmic-atomic:rawhide`, an unofficial Fedora-derived
 base. Its inspection output is useful for compatibility investigation, not proof
 of successful installation or boot. For a multi-platform image, the reported
-registry digest may identify the index; production base resolution must select
-and record the amd64 manifest explicitly.
+registry digest may identify the index. `just resolve-base` selects the amd64
+manifest explicitly; the build records it in OCI labels and
+`/usr/share/desktop-os/base-image`.
 
 ### Automatic shell loading with direnv
 
@@ -74,8 +80,9 @@ the host's `virtualisation.podman` module. Other distributions should follow the
 Podman host setup instructions.
 
 Run `just doctor` on each development/build host. A successful `podman info`
-confirms initialization, but the eventual OS image build must still establish
-whether rootless execution is sufficient or a privileged builder is needed.
+confirms initialization. The current image has also been built successfully with
+rootless Podman on the development host; new hosts still need their own build
+verification.
 Provide enough disk space for large OS image layers and build-time temporary
 files. Registry inspection and Nix package downloads need network access.
 

@@ -38,12 +38,15 @@ doctor:
 inspect-base image=base_image:
     skopeo inspect --no-tags --override-os linux --override-arch amd64 "docker://{{ image }}"
 
-# Build locally once the OS image's Containerfile has been implemented.
-build image="localhost/desktop-os:dev":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -f Containerfile ]]; then
-        printf '%s\n' 'Containerfile is not implemented yet; this change establishes the build toolchain.' >&2
-        exit 1
-    fi
-    podman build --platform linux/amd64 --pull=always --file Containerfile --tag "{{ image }}" .
+# Resolve and validate the actual linux/amd64 manifest, not the image index.
+resolve-base image=base_image:
+    bash scripts/resolve-base.sh "{{ image }}"
+
+# Build from a freshly resolved Rawhide base or an explicitly supplied digest.
+build image="localhost/desktop-os:dev" base=base_image:
+    bash scripts/build-image.sh "{{ image }}" "{{ base }}"
+
+# Check the built image's packages/default shell and rerun normal bootc linting.
+verify image="localhost/desktop-os:dev":
+    podman run --rm --interactive --network=none --entrypoint /bin/bash "{{ image }}" < build_files/verify.sh
+    podman run --rm --network=none --entrypoint bootc "{{ image }}" container lint --fatal-warnings

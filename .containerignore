@@ -1,0 +1,4 @@
+*
+!Containerfile
+!build_files/
+!build_files/**

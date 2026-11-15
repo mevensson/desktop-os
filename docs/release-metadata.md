@@ -16,8 +16,8 @@ working tree is dirty. A dirty build's revision/dirty marker is diagnostic, not
 a complete snapshot of its uncommitted source.
 
 Release IDs are write-once. The build refuses to overwrite an existing local
-`.build/<release-id>/release.json`, including after a failed attempt. Future
-publication must enforce the same rule in GHCR and retain the published digest
+`.build/<release-id>/release.json`, including after a failed attempt. The
+[publisher](publication.md) enforces the same rule in GHCR and retains the published digest
 as the authoritative immutable image reference. Preparing metadata or setting
 `build.kind=github` does not authorize production publication.
 
@@ -116,11 +116,11 @@ image ID rather than the moving local tag, avoiding confusion from overlapping
 local builds. A local image ID is not a registry manifest digest.
 
 The image's own final digest cannot be embedded in the content that determines
-that digest. The later publisher must add the GHCR repository and exact
-published digest to a separate publication record, bound to this release ID and
-manifest. It must publish successful images independently of home/ISO results.
+that digest. The publisher adds the GHCR repository and exact published digest
+to `publication.json`, bound to this release ID and manifest. Successful images
+publish independently of home/ISO results.
 
-## Production ordering requirements for the CI/publication slice
+## Production ordering
 
 Use one production workflow's `run_number`, then `attempt`, as the ordering
 tuple. Compare these as decimal integers, never as lexicographic strings. The
@@ -132,8 +132,8 @@ Promotion must be serialized and inspect the current production release's
 ordering metadata before moving its reference. GitHub concurrency alone does
 not guarantee FIFO. An old run rerun after a newer successful run still has an
 older run number and must not replace it. Failed builds retain the previous
-production reference. These are requirements for the next slice, not an
-implemented publication mechanism.
+production reference. The workflow and publisher implement this protocol; see
+[publication.md](publication.md) for the concurrency scope and failure behavior.
 
 ## Association with independently built home outputs (issues #4 and #6)
 

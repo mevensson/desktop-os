@@ -18,7 +18,7 @@ _lint:
     #!/usr/bin/env bash
     set -euo pipefail
     shopt -s globstar nullglob
-    scripts=(build_files/**/*.sh scripts/**/*.sh)
+    scripts=(build_files/**/*.sh scripts/**/*.sh tests/**/*.sh)
     workflows=(.github/workflows/*.yml .github/workflows/*.yaml)
     if ((${#scripts[@]})); then shellcheck "${scripts[@]}"; fi
     if ((${#workflows[@]})); then actionlint "${workflows[@]}"; fi
@@ -59,3 +59,7 @@ verify image="localhost/desktop-os:dev":
     bash scripts/verify-release.sh "{{ image }}"
     podman run --rm --interactive --network=none --entrypoint /bin/bash "{{ image }}" < build_files/verify.sh
     podman run --rm --network=none --entrypoint bootc "{{ image }}" container lint --fatal-warnings
+
+# Exercise the publication protocol against a disposable local registry.
+test-publication image="localhost/desktop-os:dev":
+    bash tests/publication.sh "{{ image }}"

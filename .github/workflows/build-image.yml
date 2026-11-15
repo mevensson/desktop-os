@@ -1,0 +1,78 @@
+name: Build OS image
+
+on:
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        required: true
+
+# Token permissions are inherited from the caller: validation has contents:read
+# only; the trusted main-branch caller additionally grants packages:write.
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Check out the exact workflow revision
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Free builder disk space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Check the locked build tooling and source
+        run: nix develop path:. --command just check
+
+      - name: Check container builder
+        run: nix develop path:. --command bash scripts/ci-run.sh just doctor
+
+      - name: Build the amd64 image from the current Rawhide base
+        run: nix develop path:. --command bash scripts/ci-run.sh just build
+
+      - name: Verify the produced image
+        shell: bash
+        run: |
+          image_id=$(< ".build/release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}/image-id")
+          nix develop path:. --command bash scripts/ci-run.sh just verify "$image_id"
+
+      - name: Publish and promote a trusted production build
+        if: inputs.publish
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          REGISTRY_AUTH_FILE: ${{ runner.temp }}/desktop-os-ghcr-auth.json
+        shell: bash
+        run: |
+          trap 'rm -f "$REGISTRY_AUTH_FILE"' EXIT
+          printf '%s' "$GHCR_TOKEN" | nix develop path:. --command \
+            skopeo login --authfile "$REGISTRY_AUTH_FILE" \
+              --username "$GITHUB_ACTOR" --password-stdin ghcr.io
+          unset GHCR_TOKEN
+          nix develop path:. --command bash scripts/ci-run.sh \
+            bash scripts/publish-image.sh \
+              ".build/release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+              ghcr.io/mevensson/desktop-os
+
+      - name: Retain build and publication evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: os-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 30
+          path: |
+            .build/*/release.json
+            .build/*/flake.lock
+            .build/*/image-id
+            .build/*/build-result.json
+            .build/*/packages.txt
+            .build/*/publication.json

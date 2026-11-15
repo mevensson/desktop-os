@@ -4,12 +4,14 @@ A shared AMD x86-64 Rawhide COSMIC OS image, planned in
 [issue #1](https://github.com/mevensson/desktop-os/issues/1).
 
 The repository provides the development/build toolchain, a minimal OS image
-build, and user-scoped Firefox Flatpak setup with automatic updates. CI
-publication is a subsequent step in
+build, user-scoped Firefox Flatpak setup with automatic updates, and GitHub
+Actions validation/production publication for
 [issue #2](https://github.com/mevensson/desktop-os/issues/2). Local build evidence
 is recorded in [docs/image-build.md](docs/image-build.md).
 Each build embeds a unique release ID and source/input metadata; see the
 [release metadata contract](docs/release-metadata.md).
+See [publication setup and verification](docs/publication.md) for workflow
+triggers, GHCR package visibility, and ordered promotion to `production`.
 
 ## Firefox on the installed OS
 

@@ -44,6 +44,26 @@ of successful installation or boot. For a multi-platform image, the reported
 registry digest may identify the index; production base resolution must select
 and record the amd64 manifest explicitly.
 
+### Automatic shell loading with direnv
+
+Install [direnv](https://direnv.net/) and
+[nix-direnv](https://github.com/nix-community/nix-direnv), and enable the direnv
+hook in your interactive shell. On NixOS with Home Manager, this can be configured
+with `programs.direnv.enable = true;` and
+`programs.direnv.nix-direnv.enable = true;`.
+
+Then, from the repository root:
+
+```bash
+direnv allow
+```
+
+The checked-in `.envrc` loads the default flake development shell when you enter
+the repository and unloads it when you leave. nix-direnv caches the environment
+and watches `flake.nix` and `flake.lock` for changes. Its local `.direnv/` state is
+ignored by Git. Once loaded, run `just check`, `just doctor`, or other commands
+directly. Explicit `nix develop` remains available on machines without direnv.
+
 ### Host requirements
 
 Nix supplies userspace tools, not the host configuration needed to run containers.

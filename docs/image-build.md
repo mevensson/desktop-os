@@ -25,8 +25,8 @@ just build localhost/desktop-os:experiment \
 just verify localhost/desktop-os:experiment
 ```
 
-Use the shared build command: the Containerfile requires the resolved `BASE_IMAGE`
-and `BASE_DIGEST` arguments. It follows the Universal Blue
+Use the shared build command: the Containerfile requires the resolved base,
+release arguments, and the `release` named build context. It follows the Universal Blue
 [image-template](https://github.com/ublue-os/image-template) pattern of mounting
 build scripts from a scratch context stage. `.containerignore` limits that
 context to the Containerfile, build files, and immutable system files.
@@ -48,6 +48,8 @@ The build:
 No accounts are provisioned by the build. The exact base reference is stored in
 `/usr/share/desktop-os/base-image` and the OCI labels
 `org.opencontainers.image.base.name` and `org.opencontainers.image.base.digest`.
+The full [release metadata](release-metadata.md) is embedded in
+`/usr/share/desktop-os/release.json`, with matching source/release OCI labels.
 For example:
 
 ```bash

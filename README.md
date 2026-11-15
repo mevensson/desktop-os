@@ -8,6 +8,8 @@ build, and user-scoped Firefox Flatpak setup with automatic updates. CI
 publication is a subsequent step in
 [issue #2](https://github.com/mevensson/desktop-os/issues/2). Local build evidence
 is recorded in [docs/image-build.md](docs/image-build.md).
+Each build embeds a unique release ID and source/input metadata; see the
+[release metadata contract](docs/release-metadata.md).
 
 ## Firefox on the installed OS
 
@@ -55,6 +57,9 @@ nix develop path:. --command just verify
 resolves the current Rawhide base to its amd64 manifest digest before building.
 An alternative local image name and base reference can be passed as arguments;
 see [the image build documentation](docs/image-build.md).
+Release manifests, the selected lock file, image IDs, and RPM inventories are
+saved under `.build/<release-id>/` (ignored by Git). `just prepare-release` and
+`just build-release` support preparing one shared manifest for separate jobs.
 
 `just inspect-base` defaults to
 `quay.io/fedora-ostree-desktops/cosmic-atomic:rawhide`, an unofficial Fedora-derived

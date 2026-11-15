@@ -46,7 +46,16 @@ resolve-base image=base_image:
 build image="localhost/desktop-os:dev" base=base_image:
     bash scripts/build-image.sh "{{ image }}" "{{ base }}"
 
+# Prepare a shared release manifest before independent image/home builds.
+prepare-release base=base_image:
+    bash scripts/prepare-release.sh "{{ base }}"
+
+# Build using a previously prepared manifest (the source checkout must match).
+build-release metadata image="localhost/desktop-os:dev":
+    bash scripts/build-image.sh "{{ image }}" --release "{{ metadata }}"
+
 # Check the built image's packages/default shell and rerun normal bootc linting.
 verify image="localhost/desktop-os:dev":
+    bash scripts/verify-release.sh "{{ image }}"
     podman run --rm --interactive --network=none --entrypoint /bin/bash "{{ image }}" < build_files/verify.sh
     podman run --rm --network=none --entrypoint bootc "{{ image }}" container lint --fatal-warnings

@@ -1,0 +1,7 @@
+[Unit]
+Description=Install Firefox and update user Flatpak applications and runtimes
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/desktop-os/flatpak-update
+TimeoutStartSec=1h

@@ -2,6 +2,7 @@
 ARG BASE_IMAGE
 FROM scratch AS ctx
 COPY build_files /build_files
+COPY system_files /system_files
 
 FROM ${BASE_IMAGE}
 ARG BASE_IMAGE
@@ -10,11 +11,11 @@ LABEL org.opencontainers.image.source="https://github.com/mevensson/desktop-os" 
       org.opencontainers.image.base.name="${BASE_IMAGE}" \
       org.opencontainers.image.base.digest="${BASE_DIGEST}"
 
-RUN --mount=type=bind,from=ctx,source=/build_files,target=/ctx,ro \
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx,ro \
     --mount=type=cache,target=/var/cache \
     --mount=type=cache,target=/var/log \
     --mount=type=tmpfs,target=/tmp \
-    /bin/bash /ctx/build.sh
+    /bin/bash /ctx/build_files/build.sh
 
 # Keep the exact selected base available from the deployed filesystem too.
 RUN mkdir -p /usr/share/desktop-os && \

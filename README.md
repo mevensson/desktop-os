@@ -3,10 +3,24 @@
 A shared AMD x86-64 Rawhide COSMIC OS image, planned in
 [issue #1](https://github.com/mevensson/desktop-os/issues/1).
 
-The repository provides the development/build toolchain and a minimal OS image
-build. CI publication and Firefox Flatpak setup are subsequent steps in
+The repository provides the development/build toolchain, a minimal OS image
+build, and user-scoped Firefox Flatpak setup with automatic updates. CI
+publication is a subsequent step in
 [issue #2](https://github.com/mevensson/desktop-os/issues/2). Local build evidence
 is recorded in [docs/image-build.md](docs/image-build.md).
+
+## Firefox on the installed OS
+
+From a terminal in your desktop session, run once as your normal user:
+
+```bash
+desktop-os-setup-firefox
+```
+
+This installs Firefox from Flathub in user scope and enables independent daily
+updates for user Flatpak applications and runtimes. It is safe to repeat after a
+failed download or on an already configured account. See
+[docs/firefox.md](docs/firefox.md) for scheduling, diagnostics, and verification.
 
 ## Development and build tools
 
@@ -100,7 +114,7 @@ nix develop path:. --command just doctor
 
 The separate `nixpkgs-tools` input leaves room for Home Manager and its own
 package/input update policy in issue #4. Tools supplied here run on the build
-host; Fedora RPMs in the future Containerfile supply OS image packages such as
+host; Fedora RPMs in the Containerfile supply OS image packages such as
 fish.
 
 Format Nix and just files with:

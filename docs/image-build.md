@@ -29,7 +29,7 @@ Use the shared build command: the Containerfile requires the resolved `BASE_IMAG
 and `BASE_DIGEST` arguments. It follows the Universal Blue
 [image-template](https://github.com/ublue-os/image-template) pattern of mounting
 build scripts from a scratch context stage. `.containerignore` limits that
-context to the Containerfile and build files.
+context to the Containerfile, build files, and immutable system files.
 
 The build:
 
@@ -41,6 +41,8 @@ The build:
 - Checks required packages, executes fish, and verifies that the root shell and
   default shell for newly created accounts remain `/bin/bash`.
 - Cleans DNF caches and generated runtime/countme state.
+- Ships the Firefox user setup/update helpers and user service/timer; validates
+  their shell syntax and systemd units without downloading Flatpaks in a layer.
 - Runs `bootc container lint --fatal-warnings` before producing the final image.
 
 No accounts are provisioned by the build. The exact base reference is stored in
@@ -60,7 +62,11 @@ still reads live Rawhide repositories; this is not a promise of indefinitely
 reproducible historical builds. Podman may reuse build layers for unchanged
 inputs. The default build resolves Rawhide again on every invocation.
 
-## Local verification evidence — 2026-11-15
+## Minimal-image slice verification — 2026-11-15
+
+This records the initial image before the Firefox helpers were added. The
+follow-up image and Firefox integration evidence are in
+[firefox.md](firefox.md#local-verification-evidence--2026-11-15).
 
 Built with the checked-in Nix toolchain on a Linux x86-64 NixOS development host,
 using rootless Podman 6.1.4 without `sudo` or `--privileged`.
@@ -96,7 +102,7 @@ bootc warnings. Cleaning that state produced the warning-free final build above.
 This is a successful local image-production and container-content check.
 Installation, a booted COSMIC session, real AMD graphics/networking, and hardware
 boot have not been exercised. The base is an unofficial Fedora-derived image,
-not a Universal Blue-maintained COSMIC distribution. Firefox Flatpak installation
-and automatic updates are the next implementation step; this intermediate image
-has no Firefox installation. GHCR publication and remote CI execution have not
+not a Universal Blue-maintained COSMIC distribution. Firefox is installed in user
+scope after boot using the [documented setup command](firefox.md), rather than
+embedded in an image layer. GHCR publication and remote CI execution have not
 been performed.

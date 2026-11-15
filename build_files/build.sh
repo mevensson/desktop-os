@@ -21,4 +21,9 @@ fi
 dnf5 clean all
 # DNF's countme/runtime state is build-time state, not OS payload.
 rm -rf /var/lib/dnf /run/dnf
-bash /ctx/verify.sh
+
+# Only immutable helpers/units are shipped; Flatpak user state is created later.
+cp -a /ctx/system_files/. /
+install -D -m 0755 /ctx/build_files/setup-firefox.sh /usr/bin/desktop-os-setup-firefox
+install -D -m 0755 /ctx/build_files/update-flatpaks.sh /usr/libexec/desktop-os/flatpak-update
+bash /ctx/build_files/verify.sh

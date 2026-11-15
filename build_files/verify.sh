@@ -15,3 +15,12 @@ fi
 useradd -D | grep -qx 'SHELL=/bin/bash'
 test "$(getent passwd root | cut -d: -f7)" = /bin/bash
 test -n "$(ls -A /usr/lib/modules)"
+
+bash -n /usr/bin/desktop-os-setup-firefox
+bash -n /usr/libexec/desktop-os/flatpak-update
+# Unit validation needs a runtime directory even without a running user manager.
+runtime=$(mktemp -d)
+trap 'rm -rf "$runtime"' EXIT
+XDG_RUNTIME_DIR="$runtime" systemd-analyze --user verify \
+    /usr/lib/systemd/user/desktop-os-flatpak-update.service \
+    /usr/lib/systemd/user/desktop-os-flatpak-update.timer

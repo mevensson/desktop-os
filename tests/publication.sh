@@ -29,6 +29,14 @@ for _attempt in {1..30}; do
 done
 test "$status" = 3
 
+# Both successful promotions must tolerate missing and stale reads after write.
+REAL_SKOPEO=$(type -P skopeo)
+export REAL_SKOPEO REGISTRY_CONSISTENCY_STATE="$temporary/consistency-state"
+export REGISTRY_VERIFY_DELAY=0 REGISTRY_VERIFY_ATTEMPTS=3
+mkdir -p "$temporary/bin"
+install -m 0755 tests/fixtures/eventually-consistent-skopeo.sh "$temporary/bin/skopeo"
+export PATH="$temporary/bin:$PATH"
+
 export GITHUB_ACTIONS=true GITHUB_REPOSITORY=mevensson/desktop-os GITHUB_REF=refs/heads/main
 export GITHUB_EVENT_NAME=push GITHUB_WORKFLOW_REF=mevensson/desktop-os/.github/workflows/build.yml@refs/heads/main
 GITHUB_SHA=$(git rev-parse HEAD)
@@ -79,6 +87,9 @@ fixture 102 2 2
 bash scripts/publish-image.sh "$directory" "$repository"
 latest=$(production_digest)
 test "$latest" != "$first"
+if REGISTRY_STALE_FOREVER=true REGISTRY_VERIFY_ATTEMPTS=2 \
+    bash scripts/wait-for-registry-image.sh "$repository:production" "$latest"; then exit 1; fi
+test "$(production_digest)" = "$latest"
 if bash scripts/publish-image.sh "$directory" "$repository"; then exit 1; fi
 if GITHUB_EVENT_NAME=pull_request bash scripts/publish-image.sh "$directory" "$repository"; then exit 1; fi
 fixture 103 3 1
@@ -91,4 +102,5 @@ else
     test "$?" = 1
 fi
 printf '%s\n' 'Publication protocol passed: anonymous pulls, immutable tags, older-run rejection,' \
-    'newer-attempt promotion, PR rejection, failed-image retention, and fail-closed registry errors.'
+    'newer-attempt promotion, read-after-write retries and exhaustion, PR rejection,' \
+    'failed-image retention, and fail-closed registry errors.'
